@@ -218,7 +218,7 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
     <header>
       <div class="navbar fixed-top">
           <div class="container">
-            <div class="navtitle">Sensor Monitor</div>
+            <div class="navtitle">IOT Interface Monitoring System</div>
             <div class="navdata" id = "date">mm/dd/yyyy</div>
             <div class="navheading">DATE</div><br>
             <div class="navdata" id = "time">00:00:00</div>
@@ -259,12 +259,17 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
         <td><div class="bodytext">Digital switch</div></td>
         <td><div class="tabledata" id = "switch"></div></td>
       </tr>
+      <tr>
+        <td><div class="bodytext">Emergency Mode</div></td>
+        <td><div class="tabledata" id="emergencyMode"></div>
+        </td>
+      </tr>
       </table>
     </div>
     <br>
     <div class="category">Sensor Controls</div>
     <br>
-    <div class="bodytext">LED </div>
+    <div class="bodytext">Inbuilt LED </div>
     <button type="button" class = "btn" id = "btn0" onclick="ButtonPress0()">Toggle</button>
     </div>
     <br>
@@ -280,7 +285,7 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
     <br>
   </main>
 
-  <footer div class="foot" id = "temp" >ESP32 Web Page Creation and Data Update Demo</div></footer>
+  <footer div class="foot" id = "temp" >Embedded System Design Semester Project</div></footer>
   
   </body>
 
@@ -453,6 +458,19 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
         document.getElementById("switch").innerHTML="Switch is ON";
         document.getElementById("btn1").innerHTML="Turn OFF";
         document.getElementById("switch").style.color="#00AA00";
+      }
+
+      // Add this part to update the content of the Emergency Mode cell
+      xmldoc = xmlResponse.getElementsByTagName("EMERGENCY_MODE");
+      message = xmldoc[0].firstChild.nodeValue;
+      document.getElementById("emergencyMode").style.backgroundColor="rgb(200,200,200)";
+      // var emergencyModeCell = document.getElementById("emergencyMode");
+      if (message == 0) {
+        document.getElementById("emergencyMode").innerHTML="OFF";
+        document.getElementById("emergencyMode").style.color="#00AA00";  // Green color for OFF
+      } else {
+        document.getElementById("emergencyMode").innerHTML="ON";
+        document.getElementById("emergencyMode").style.color = "#AA0000";  // Red color for ON
       }
      }
   
