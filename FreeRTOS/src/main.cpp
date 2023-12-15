@@ -170,6 +170,10 @@
 #define PIN_LED 2
 #define PIN_A0 34
 #define PIN_A1 35
+#define IR_SENSOR_PIN 33  // Replace with the actual pin number where your IR sensor is connected
+#define ULTRASONIC_TRIGGER_PIN 12  // Replace with the actual pin number where the ultrasonic sensor trigger is connected
+#define ULTRASONIC_ECHO_PIN 13     // Replace with the actual pin number where the ultrasonic sensor echo is connected
+#define BUZZER_PIN 15              // Replace with the actual pin number where the buzzer is connected
 
 int BitsA0 = 0, BitsA1 = 0;
 float VoltsA0 = 0, VoltsA1 = 0;
@@ -178,7 +182,8 @@ bool LED0 = false, SomeOutput = false;
 uint32_t SensorUpdate = 0;
 int FanRPM = 0;
 bool emergencyShutdownActive = false;
-  
+int taskCount = 0;
+
 char XML[2048];
 char buf[32];
 IPAddress Actual_IP;
@@ -190,6 +195,7 @@ IPAddress ip;
 WebServer server(80);
 
 TaskHandle_t mainTask;
+TaskHandle_t serverTask;
 TaskHandle_t Task1Handle = NULL;
 TaskHandle_t Task2Handle = NULL;
 TaskHandle_t Task3Handle = NULL;
@@ -197,10 +203,11 @@ TaskHandle_t Task3Handle = NULL;
 void Task1Function(void *pvParameters);
 void Task2Function(void *pvParameters);
 void Task3Function(void *pvParameters);
+void ServerTask(void *pvParameters);  // New server task
 void EmergencyShutdown();
 
-
 void mainTaskFunction(void *pvParameters);
+
 void UpdateSlider();
 void ProcessButton_1();
 void ProcessButton_0();
@@ -221,7 +228,6 @@ void setup() {
 
   disableCore0WDT();
 
-
   WiFi.softAP(AP_SSID, AP_PASS);
   delay(100);
   WiFi.softAPConfig(PageIP, gateway, subnet);
@@ -239,18 +245,23 @@ void setup() {
   server.begin();
 
   xTaskCreatePinnedToCore(mainTaskFunction, "mainTask", 8192, NULL, 1, &mainTask, 0);
-   // Create FreeRTOS tasks
+
+  // Create FreeRTOS tasks
   xTaskCreatePinnedToCore(Task1Function, "Task1", 8192, NULL, 2, &Task1Handle, 0);
   xTaskCreatePinnedToCore(Task2Function, "Task2", 8192, NULL, 2, &Task2Handle, 0);
   xTaskCreatePinnedToCore(Task3Function, "Task3", 8192, NULL, 3, &Task3Handle, 0);
 
+  // Create a server task pinned to core 1
+  xTaskCreatePinnedToCore(ServerTask, "serverTask", 4096, NULL, 3, &serverTask, 1);
 }
 
 void loop() {
-  server.handleClient();
+  // Since the server is now in its task, loop() can be left empty
+  // or used for other non-blocking tasks if needed.
 }
 
 void mainTaskFunction(void *pvParameters) {
+  taskCount++;
   while (true) {
     if ((millis() - SensorUpdate) >= 50) {
       SensorUpdate = millis();
@@ -261,6 +272,7 @@ void mainTaskFunction(void *pvParameters) {
     }
     vTaskDelay(pdMS_TO_TICKS(10));  // Adjust the delay as needed
   }
+  
 }
 
 void UpdateSlider() {
@@ -268,13 +280,15 @@ void UpdateSlider() {
   FanSpeed = t_state.toInt();
   Serial.print("UpdateSlider ");
   Serial.println(FanSpeed);
-  ledcWrite(0, FanSpeed);
 
-  FanRPM = map(FanSpeed, 0, 255, 0, 2400);
-  strcpy(buf, "");
-  sprintf(buf, "%d", FanRPM);
-  sprintf(buf, buf);
-  server.send(200, "text/plain", buf);
+  // Map FanSpeed to LED brightness (assuming FanSpeed is in the range 0-255)
+  int ledBrightness = map(FanSpeed, 0, 255, 0, 255);
+
+  // Set LED brightness
+  analogWrite(PIN_FAN, ledBrightness);
+
+  // Respond with the updated RPM value
+  server.send(200, "text/plain", String(FanSpeed));
 }
 
 void ProcessButton_0() {
@@ -328,44 +342,109 @@ void SendXML() {
     strcat(XML, "0");
   }
   strcat(XML, "</EMERGENCY_MODE>\n");
+  strcat(XML, "<CORE0_STATUS>");
+  if (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING && uxTaskGetNumberOfTasks() > 0) {
+    strcat(XML, "1");
+  } else {
+    strcat(XML, "0");
+  }
+  strcat(XML, "</CORE0_STATUS>\n");
+
+  strcat(XML, "<CORE1_STATUS>");
+  if (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING && uxTaskGetNumberOfTasks() > 1) {
+    // char a= Serial.read();
+    // if(a == 'C'){
+    //   strcat(XML, "0");
+    // }
+    strcat(XML, "1");
+  } else {
+    strcat(XML, "0");
+  }
+  strcat(XML, "</CORE1_STATUS>\n");
+  strcat(XML, "<TASK_COUNT>");
+  strcat(XML, String(taskCount).c_str());
+  strcat(XML, "</TASK_COUNT>\n");
 
   strcat(XML, "</Data>\n");
   Serial.println(XML);
   server.send(200, "text/xml", XML);
 }
 
-
-void Task1Function(void *pvParameters) {
-  while (1) {
-    // Process sensor data
-    // Add your sensor data processing code here
-    Serial.println("Task1 - sensor data is processed");
-
-    vTaskDelay(pdMS_TO_TICKS(50));  // Adjust the delay as needed
+void ServerTask(void *pvParameters) {
+  taskCount++;
+  while (true) {
+    // Update the server task core indicators
+    server.handleClient();
+    vTaskDelay(pdMS_TO_TICKS(10));
   }
 }
 
+
+void Task1Function(void *pvParameters) {
+  taskCount++;
+  pinMode(IR_SENSOR_PIN, INPUT);
+
+  while (1) {
+    // Read data from the analog IR sensor
+    int irSensorValue = analogRead(IR_SENSOR_PIN);
+
+    // Process the sensor data
+    if (irSensorValue < 500) {
+      Serial.println("IR sensor detected an obstacle!");
+    } else {
+      Serial.println("No obstacle detected.");
+    }
+    vTaskDelay(pdMS_TO_TICKS(50));  // Adjust the delay as needed
+  }
+  
+}
+
 void Task2Function(void *pvParameters) {
+  taskCount++;
   while (1) {
     // Update display
     // Add your display updating code here
     Serial.println("Task2 - display is updated");
-
     vTaskDelay(pdMS_TO_TICKS(100));  // Adjust the delay as needed
   }
+  
 }
 
 void Task3Function(void *pvParameters) {
+  taskCount++;
+  pinMode(ULTRASONIC_TRIGGER_PIN, OUTPUT);
+  pinMode(ULTRASONIC_ECHO_PIN, INPUT);
+  pinMode(BUZZER_PIN, OUTPUT);
+
   while (1) {
-    // Execute emergency protocol
-    vTaskDelay(pdMS_TO_TICKS(3000));
+    // Trigger ultrasonic sensor
+    digitalWrite(ULTRASONIC_TRIGGER_PIN, LOW);
+    delayMicroseconds(2);
+    digitalWrite(ULTRASONIC_TRIGGER_PIN, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(ULTRASONIC_TRIGGER_PIN, LOW);
 
-    emergencyShutdownActive = !emergencyShutdownActive;
-    // Add logic to trigger EmergencyShutdown when required
-    if (emergencyShutdownActive) {
-      EmergencyShutdown();
+    // Read the ultrasonic sensor echo
+    long duration = pulseIn(ULTRASONIC_ECHO_PIN, HIGH);
+    // Calculate distance in centimeters
+    float distance = duration * 0.034 / 2;
+    char a= Serial.read();
+    // Check if an obstacle is detected (adjust the distance threshold as needed)
+    // if (distance < 20) {
+    if (a == 'E') {
+      // Activate emergency mode only if not already active
+      if (!emergencyShutdownActive) {
+        emergencyShutdownActive = true;
+        EmergencyShutdown();
+      }
+    } else {
+      // Deactivate emergency mode only if it was active
+      if (emergencyShutdownActive) {
+        emergencyShutdownActive = false;
+        // Add any post-emergency code here if needed
+      }
     }
-
+    
     vTaskDelay(pdMS_TO_TICKS(100));  // Adjust the delay as needed
   }
 }
@@ -373,13 +452,15 @@ void Task3Function(void *pvParameters) {
 void EmergencyShutdown() {
   // Execute emergency shutdown procedures
   Serial.println("Task3 - EMERGENCY protocol is being executed...");
+  // Activate the buzzer
+  digitalWrite(BUZZER_PIN, HIGH);
 
-  // Halt the system, flash red LED, sound alarm, etc.
+  // Halt the system, flash red LED, etc.
   // Add your emergency shutdown code here
 
   // Send XML data to update the server
-
   server.send(200, "text/plain", "");
 
-  // Reset emergencyShutdownActive after sending data
+  // Deactivate the buzzer
+  digitalWrite(BUZZER_PIN, LOW);
 }

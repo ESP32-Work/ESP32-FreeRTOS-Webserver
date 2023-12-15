@@ -210,7 +210,7 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
     table tr:last-child td:last-child {
       border-bottom-right-radius: 5px;
     }
-    
+
   </style>
 
   <body style="background-color: #efefef" onload="process()">
@@ -223,7 +223,6 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
             <div class="navheading">DATE</div><br>
             <div class="navdata" id = "time">00:00:00</div>
             <div class="navheading">TIME</div>
-            
           </div>
       </div>
     </header>
@@ -265,6 +264,57 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
         </td>
       </tr>
       </table>
+      <div style="float: right; width: 50%; padding: 0px 20px;">
+        <div class="category">Cores Used</div>
+        <table style="width:100%">
+          <colgroup>
+            <col span="1" style="background-color: #343a40; width: 20%; color: #FFFFFF;">
+            <col span="1" style="background-color:rgb(0,0,0); color:#FFFFFF">
+          </colgroup>
+          <tr>
+            <th colspan="1"><div class="heading">Core</div></th>
+            <th colspan="1"><div class="heading">Status</div></th>
+          </tr>
+          <tr>
+            <td><div class="bodytext">Core 0</div></td>
+            <td><div id="core0Status" class="tabledata"></div></td>
+          </tr>
+          <tr>
+            <td><div class="bodytext">Core 1</div></td>
+            <td><div id="core1Status" class="tabledata"></div></td>
+          </tr>
+        </table>
+        <!-- Add the live tasks section -->
+        <div style="margin-top: 20px;">
+          <div class="category">Task Information</div>
+          <div style="display: flex; justify-content: center; align-items: center; flex-direction: column;">
+            <div class="heading">Total Tasks</div>
+            <div class="circle">
+              <div id="taskCount" class="circle-data"></div>
+            </div>
+          </div>
+        </div>
+
+        <style>
+          .circle {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background-color: #343a40;
+            color: #FFFFFF;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            margin-top: 10px;
+          }
+
+          .circle-data {
+            font-size: 40px;
+            font-weight: bold;
+          }
+        </style>
+      </div>
     </div>
     <br>
     <div class="category">Sensor Controls</div>
@@ -472,6 +522,17 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
         document.getElementById("emergencyMode").innerHTML="ON";
         document.getElementById("emergencyMode").style.color = "#AA0000";  // Red color for ON
       }
+      // Fetch and update Core status
+      xmldoc = xmlResponse.getElementsByTagName("CORE0_STATUS");
+      message = xmldoc[0].firstChild.nodeValue;
+      document.getElementById("core0Status").innerHTML = message === "1" ? "In Use" : "Not In Use";
+
+      xmldoc = xmlResponse.getElementsByTagName("CORE1_STATUS");
+      message = xmldoc[0].firstChild.nodeValue;
+      document.getElementById("core1Status").innerHTML = message === "1" ? "In Use" : "Not In Use";
+      xmldoc = xmlResponse.getElementsByTagName("TASK_COUNT");
+      var taskCount = xmldoc[0].firstChild.nodeValue;
+      document.getElementById("taskCount").innerHTML = taskCount;
      }
   
     // general processing code for the web page to ask for an XML steam
