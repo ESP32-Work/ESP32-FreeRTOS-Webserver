@@ -42,3 +42,6 @@ Contributions are welcome. Please open an issue or submit a pull request.
 ## License
 
 This project is licensed under the MIT License.
+
+## Acknowledgements
+- Original code can be found [here](https://github.com/KrisKasprzak/ESP32_WebPage).
