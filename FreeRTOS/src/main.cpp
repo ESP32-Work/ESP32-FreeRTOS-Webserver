@@ -159,6 +159,8 @@
 #include <WebServer.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include "DHT.h"
+#include <Adafruit_Sensor.h>
 
 #include "SuperMon.h"
 
@@ -174,6 +176,10 @@
 #define ULTRASONIC_TRIGGER_PIN 12  // Replace with the actual pin number where the ultrasonic sensor trigger is connected
 #define ULTRASONIC_ECHO_PIN 13     // Replace with the actual pin number where the ultrasonic sensor echo is connected
 #define BUZZER_PIN 15              // Replace with the actual pin number where the buzzer is connected
+#define DHT_PIN 14   // Replace with the actual pin number where your DHT11 sensor is connected
+#define DHT_TYPE DHT11
+
+DHT dht(DHT_PIN, DHT_TYPE);
 
 int BitsA0 = 0, BitsA1 = 0;
 float VoltsA0 = 0, VoltsA1 = 0;
@@ -183,6 +189,8 @@ uint32_t SensorUpdate = 0;
 int FanRPM = 0;
 bool emergencyShutdownActive = false;
 int taskCount = 0;
+float temperatureDHT = 0.0;
+float humidityDHT = 0.0;
 
 char XML[2048];
 char buf[32];
@@ -243,7 +251,7 @@ void setup() {
   server.on("/BUTTON_1", ProcessButton_1);
 
   server.begin();
-
+  dht.begin();
   xTaskCreatePinnedToCore(mainTaskFunction, "mainTask", 8192, NULL, 1, &mainTask, 0);
 
   // Create FreeRTOS tasks
@@ -361,6 +369,22 @@ void SendXML() {
     strcat(XML, "0");
   }
   strcat(XML, "</CORE1_STATUS>\n");
+  // Append temperature and humidity data to XML
+  strcat(XML, "<DHT_READINGS>\n");
+
+  // Append temperature value
+  strcat(XML, "<TEMP>");
+  sprintf(buf, "%.2f", temperatureDHT);
+  strcat(XML, buf);
+  strcat(XML, "</TEMP>\n");
+
+  // Append humidity value
+  strcat(XML, "<HUMIDITY>");
+  sprintf(buf, "%.2f", humidityDHT);
+  strcat(XML, buf);
+  strcat(XML, "</HUMIDITY>\n");
+
+  strcat(XML, "</DHT_READINGS>\n");
   strcat(XML, "<TASK_COUNT>");
   strcat(XML, String(taskCount).c_str());
   strcat(XML, "</TASK_COUNT>\n");
@@ -403,6 +427,17 @@ void Task2Function(void *pvParameters) {
   taskCount++;
   while (1) {
     // Update display
+    temperatureDHT = dht.readTemperature();
+    humidityDHT = dht.readHumidity();
+
+    // Update display (you can modify this part based on your display mechanism)
+    Serial.print("Task2 - Temperature: ");
+    Serial.print(temperatureDHT);
+    Serial.print(" °C, Humidity: ");
+    Serial.print(humidityDHT);
+    Serial.println(" %");
+    // Update the server with temperature and humidity values
+    SendXML(); 
     // Add your display updating code here
     Serial.println("Task2 - display is updated");
     vTaskDelay(pdMS_TO_TICKS(100));  // Adjust the delay as needed

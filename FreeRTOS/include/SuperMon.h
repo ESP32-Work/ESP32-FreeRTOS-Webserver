@@ -132,7 +132,7 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
       float: left;
       height: 50px;
       font-family: "Verdana", "Arial", sans-serif;
-      font-size: 50px;
+      font-size: 30px;
       font-weight: bold;
       line-height: 50px;
       padding-left: 20px;
@@ -218,7 +218,7 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
     <header>
       <div class="navbar fixed-top">
           <div class="container">
-            <div class="navtitle">IOT Interface Monitoring System</div>
+            <div class="navtitle">FreeRTOS IOT Interface Monitoring System</div>
             <div class="navdata" id = "date">mm/dd/yyyy</div>
             <div class="navheading">DATE</div><br>
             <div class="navdata" id = "time">00:00:00</div>
@@ -292,6 +292,20 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
             <div class="circle">
               <div id="taskCount" class="circle-data"></div>
             </div>
+          </div>
+            <!-- Add this section for DHT11 live readings -->
+          <div style="margin-top: 20px;">
+            <div class="category">Live Readings</div>
+            <table style="width:50%">
+              <tr>
+                <td><div class="heading">Temp(&deg;C)</div></td>
+                <td><div class="tabledata" id="dhtTemperature"></div></td>
+              </tr>
+              <tr>
+                <td><div class="heading">Humidity (%)</div></td>
+                <td><div class="tabledata" id="dhtHumidity"></div></td>
+              </tr>
+            </table>
           </div>
         </div>
 
@@ -533,6 +547,13 @@ const char PAGE_MAIN[] PROGMEM = R"=====(
       xmldoc = xmlResponse.getElementsByTagName("TASK_COUNT");
       var taskCount = xmldoc[0].firstChild.nodeValue;
       document.getElementById("taskCount").innerHTML = taskCount;
+      // Fetch and update DHT11 live readings
+      xmldoc = xmlResponse.getElementsByTagName("DHT_READINGS");
+      var dhtTemperature = xmldoc[0].getElementsByTagName("TEMP")[0].firstChild.nodeValue;
+      var dhtHumidity = xmldoc[0].getElementsByTagName("HUMIDITY")[0].firstChild.nodeValue;
+
+      document.getElementById("dhtTemperature").innerHTML = dhtTemperature;
+      document.getElementById("dhtHumidity").innerHTML = dhtHumidity;
      }
   
     // general processing code for the web page to ask for an XML steam
