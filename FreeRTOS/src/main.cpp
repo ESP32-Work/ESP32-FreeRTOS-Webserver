@@ -15,11 +15,11 @@
 #define PIN_LED 2
 #define PIN_A0 34
 #define PIN_A1 35
-#define IR_SENSOR_PIN 33  // Replace with the actual pin number where your IR sensor is connected
-#define ULTRASONIC_TRIGGER_PIN 12  // Replace with the actual pin number where the ultrasonic sensor trigger is connected
-#define ULTRASONIC_ECHO_PIN 13     // Replace with the actual pin number where the ultrasonic sensor echo is connected
-#define BUZZER_PIN 15              // Replace with the actual pin number where the buzzer is connected
-#define DHT_PIN 14   // Replace with the actual pin number where your DHT11 sensor is connected
+#define IR_SENSOR_PIN 33  
+#define ULTRASONIC_TRIGGER_PIN 12  
+#define ULTRASONIC_ECHO_PIN 13     
+#define BUZZER_PIN 15              
+#define DHT_PIN 14   
 #define DHT_TYPE DHT11
 
 DHT dht(DHT_PIN, DHT_TYPE);
@@ -51,13 +51,13 @@ TaskHandle_t Task1Handle = NULL;
 TaskHandle_t Task2Handle = NULL;
 TaskHandle_t Task3Handle = NULL;
 
-void Task1Function(void *pvParameters);
-void Task2Function(void *pvParameters);
-void Task3Function(void *pvParameters);
-void ServerTask(void *pvParameters);  // New server task
+void IR_Sensor_Function(void *pvParameters);
+void DHT_Sensor_Function(void *pvParameters);
+void Emergency_Function(void *pvParameters);
+void ServerTask(void *pvParameters);  
 void EmergencyShutdown();
 
-void mainTaskFunction(void *pvParameters);
+void ADC_Function(void *pvParameters);
 
 void UpdateSlider();
 void ProcessButton_1();
@@ -95,12 +95,12 @@ void setup() {
 
   server.begin();
   dht.begin();
-  xTaskCreatePinnedToCore(mainTaskFunction, "mainTask", 8192, NULL, 1, &mainTask, 0);
+  xTaskCreatePinnedToCore(ADC_Function, "mainTask", 8192, NULL, 1, &mainTask, 0);
 
   // Create FreeRTOS tasks
-  xTaskCreatePinnedToCore(Task1Function, "Task1", 8192, NULL, 2, &Task1Handle, 0);
-  xTaskCreatePinnedToCore(Task2Function, "Task2", 8192, NULL, 2, &Task2Handle, 0);
-  xTaskCreatePinnedToCore(Task3Function, "Task3", 8192, NULL, 3, &Task3Handle, 0);
+  xTaskCreatePinnedToCore(IR_Sensor_Function, "Task1", 8192, NULL, 2, &Task1Handle, 0);
+  xTaskCreatePinnedToCore(DHT_Sensor_Function, "Task2", 8192, NULL, 2, &Task2Handle, 0);
+  xTaskCreatePinnedToCore(Emergency_Function, "Task3", 8192, NULL, 3, &Task3Handle, 0);
 
   // Create a server task pinned to core 1
   xTaskCreatePinnedToCore(ServerTask, "serverTask", 4096, NULL, 3, &serverTask, 1);
@@ -111,7 +111,7 @@ void loop() {
   // or used for other non-blocking tasks if needed.
 }
 
-void mainTaskFunction(void *pvParameters) {
+void ADC_Function(void *pvParameters) {
   taskCount++;
   while (true) {
     if ((millis() - SensorUpdate) >= 50) {
@@ -132,7 +132,7 @@ void UpdateSlider() {
   Serial.print("UpdateSlider ");
   Serial.println(FanSpeed);
 
-  // Map FanSpeed to LED brightness (assuming FanSpeed is in the range 0-255)
+  // Map FanSpeed to LED brightness
   int ledBrightness = map(FanSpeed, 0, 255, 0, 255);
 
   // Set LED brightness 
@@ -247,7 +247,7 @@ void ServerTask(void *pvParameters) {
 }
 
 
-void Task1Function(void *pvParameters) {
+void IR_Sensor_Function(void *pvParameters) {
   taskCount++;
   pinMode(IR_SENSOR_PIN, INPUT);
 
@@ -266,14 +266,12 @@ void Task1Function(void *pvParameters) {
   
 }
 
-void Task2Function(void *pvParameters) {
+void DHT_Sensor_Function(void *pvParameters) {
   taskCount++;
   while (1) {
-    // Update display
     temperatureDHT = dht.readTemperature();
     humidityDHT = dht.readHumidity();
 
-    // Update display (you can modify this part based on your display mechanism)
     Serial.print("Task2 - Temperature: ");
     Serial.print(temperatureDHT);
     Serial.print(" °C, Humidity: ");
@@ -281,14 +279,13 @@ void Task2Function(void *pvParameters) {
     Serial.println(" %");
     // Update the server with temperature and humidity values
     SendXML(); 
-    // Add your display updating code here
     Serial.println("Task2 - display is updated");
     vTaskDelay(pdMS_TO_TICKS(100));  // Adjust the delay as needed
   }
   
 }
 
-void Task3Function(void *pvParameters) {
+void Emergency_Function(void *pvParameters) {
   taskCount++;
   pinMode(ULTRASONIC_TRIGGER_PIN, OUTPUT);
   pinMode(ULTRASONIC_ECHO_PIN, INPUT);
@@ -333,7 +330,6 @@ void Task3Function(void *pvParameters) {
 
 void EmergencyShutdown() {
   // Execute emergency shutdown procedures
-  // Activate the buzzer
     Serial.println("Task3 - EMERGENCY protocol is being executed...");
   // Send XML data to update the server
   server.send(200, "text/plain", "");
