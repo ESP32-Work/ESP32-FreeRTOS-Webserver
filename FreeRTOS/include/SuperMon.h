@@ -1,9 +1,7 @@
 /*
 
 
-  OK, ya ready for some fun? HTML + CSS styling + javascript all in and undebuggable environment
-
-  one trick I've learned to how to debug HTML and CSS code.
+  HTML + CSS styling + javascript all in and undebuggable environment
 
   get all your HTML code (from html to /html) and past it into this test site
   muck with the HTML and CSS code until it's what you want
@@ -55,8 +53,6 @@
 
 */
 
-// note R"KEYWORD( html page code )KEYWORD"; 
-// again I hate strings, so char is it and this method let's us write naturally
 
 const char PAGE_MAIN[] PROGMEM = R"=====(
 
