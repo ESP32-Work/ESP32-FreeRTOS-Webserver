@@ -153,6 +153,7 @@ To test the project, connect to the web server and verify that the sensor readin
 
 ## Live Demo
 
+[Screencast from 01-12-2024 01:15:53 AM.webm](https://github.com/ESP32-Work/Embedded-Systems-Semester-Project/assets/81290322/210c93d9-d37c-4b91-9d12-6f95ebebdda4)
 
 ## Contributing
 
